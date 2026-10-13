@@ -135,11 +135,20 @@ class MainActivity : Activity() {
     @Suppress("DEPRECATION")
     private fun scanQr() = startActivityForResult(Intent(this, ScanActivity::class.java), REQ_SCAN)
 
-    /** airpointer://pair links (e.g. opened by the phone's own camera app). Returns true if it was one. */
+    /**
+     * airpointer://pair links (e.g. opened by the phone's own camera app). Returns true if it was one.
+     * Any app or web page can open such a link, so the user confirms first: pairing with a stranger's
+     * computer would send it whatever is typed on the remote.
+     */
     private fun handlePairingLink(intent: Intent?): Boolean {
         val link = intent?.data?.toString()?.let { PairingLink.parse(it) } ?: return false
-        intent.data = null // don't pair again when the activity is recreated
-        pair(link)
+        intent.data = null // don't ask again when the activity is recreated
+        AlertDialog.Builder(this)
+            .setTitle("Pair with ${link.name}?")
+            .setMessage("Only pair with your own computer, after clicking \"+ Pair\" on it.")
+            .setPositiveButton("Pair") { _, _ -> pair(link) }
+            .setNegativeButton("Cancel", null)
+            .show()
         return true
     }
 
