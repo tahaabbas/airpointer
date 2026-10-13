@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <com.airpointer.remote.HoldButton
+        android:id="@+id/btnLeft"
+        style="@style/Btn"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="2"
+        android:text="LEFT"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/btnMiddle"
+        style="@style/Btn"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:text="MID" />
+
+    <Button
+        android:id="@+id/btnRight"
+        style="@style/Btn"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="8dp"
+        android:layout_weight="2"
+        android:text="RIGHT"
+        android:textStyle="bold" />
+</merge>

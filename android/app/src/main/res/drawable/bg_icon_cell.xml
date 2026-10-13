@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icon picker cell; highlighted when selected -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/accent" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+    <item>
+        <ripple android:color="#26FFFFFF">
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/row" />
+                    <corners android:radius="12dp" />
+                </shape>
+            </item>
+        </ripple>
+    </item>
+</selector>

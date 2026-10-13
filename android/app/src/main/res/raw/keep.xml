@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shortcut icons are looked up by name (Icons.kt): keep them if resource shrinking is ever turned on. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/lic_*,@drawable/ic_play_pause" />

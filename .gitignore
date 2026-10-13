@@ -1,0 +1,26 @@
+# Build outputs
+desktop/**/bin/
+desktop/**/obj/
+desktop/**/out/
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/local.properties
+*.log
+
+# Signing secrets - back these up, but don't publish them
+android/keystore.properties
+android/keystore/
+*.jks
+*.keystore
+
+# Rust build output (the built libraries are copied into desktop/AirPointer/native and android/.../jniLibs)
+native/airlink/target/
+
+# Editors / OS
+.idea/
+.vs/
+.vscode/
+*.user
+.DS_Store
+Thumbs.db

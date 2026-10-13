@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- net10.0 = Linux/macOS build; the Windows build adds WinRT for Wi-Fi/airplane-mode radio control -->
+    <TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>AirPointer</AssemblyName>
+    <RootNamespace>AirPointer</RootNamespace>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- WMI (brightness control on Windows) needs built-in COM -->
+    <BuiltInComInteropSupport Condition="$(TargetFramework.Contains('-windows'))">true</BuiltInComInteropSupport>
+    <Version>2.3.0</Version>
+    <Product>AirPointer</Product>
+    <Description>Receiver that lets an Android phone act as a mouse / air mouse.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\icon.png" />
+    <AvaloniaResource Include="Assets\OpenH264-BINARY_LICENSE.txt" />
+    <AvaloniaResource Include="..\..\LICENSE" Link="Assets\LICENSE.txt" />
+    <AvaloniaResource Include="..\..\licenses\THIRD-PARTY-NOTICES.txt" Link="Assets\THIRD-PARTY-NOTICES.txt" />
+  </ItemGroup>
+
+  <!-- Internet transport (native/airlink, Rust + iroh), prebuilt per platform into native/<runtime id>/.
+       Without it the app still works; only "connect over the internet" is unavailable. -->
+  <PropertyGroup>
+    <AirlinkRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</AirlinkRid>
+    <AirlinkRid Condition="'$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">win-x64</AirlinkRid>
+    <AirlinkRid Condition="'$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Linux'))">linux-x64</AirlinkRid>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(AirlinkRid)' != '' And Exists('native\$(AirlinkRid)')">
+    <None Include="native\$(AirlinkRid)\*" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.22" />
+    <PackageReference Include="System.Management" Version="10.0.12" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="SharpZipLib" Version="1.4.2" />
+  </ItemGroup>
+
+</Project>

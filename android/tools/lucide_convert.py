@@ -1,0 +1,144 @@
+"""Convert the Lucide icon set (https://lucide.dev, ISC license) for the Android app.
+
+Input: the extracted lucide-static npm package (package/icons/*.svg, package/tags.json).
+Output:
+  res/drawable/lic_<name>.xml       one VectorDrawable per icon (stroke 1.8, round caps/joins)
+  assets/lucide-icons.json         [[name, [tags...]], ...] for the icon picker's search
+Icons.kt finds a drawable by name at runtime (2000+ entries are too many for one Kotlin map).
+
+Usage (from the repo root; download lucide-static-<version>.tgz from the npm registry and extract it):
+  python android/tools/lucide_convert.py <extracted dir containing package/> android/app/src/main
+  python android/tools/lucide_convert.py csharp <extracted dir> desktop/AirPointer/LucideIcons.cs <icon names...>
+"""
+import glob
+import json
+import os
+import sys
+import xml.etree.ElementTree as ET
+
+NS = "{http://www.w3.org/2000/svg}"
+
+
+def num(v):
+    return float(v) if v is not None else 0.0
+
+
+def fmt(x):
+    return ("%.3f" % x).rstrip("0").rstrip(".")
+
+
+def circle(cx, cy, r):
+    return f"M{fmt(cx - r)},{fmt(cy)} a{fmt(r)},{fmt(r)} 0 1,0 {fmt(2 * r)},0 a{fmt(r)},{fmt(r)} 0 1,0 {fmt(-2 * r)},0"
+
+
+def ellipse(cx, cy, rx, ry):
+    return f"M{fmt(cx - rx)},{fmt(cy)} a{fmt(rx)},{fmt(ry)} 0 1,0 {fmt(2 * rx)},0 a{fmt(rx)},{fmt(ry)} 0 1,0 {fmt(-2 * rx)},0"
+
+
+def rect(x, y, w, h, rx, ry):
+    if rx == 0 and ry == 0:
+        return f"M{fmt(x)},{fmt(y)} h{fmt(w)} v{fmt(h)} h{fmt(-w)} Z"
+    rx = rx or ry
+    ry = ry or rx
+    rx = min(rx, w / 2)
+    ry = min(ry, h / 2)
+    return (f"M{fmt(x + rx)},{fmt(y)} h{fmt(w - 2 * rx)} a{fmt(rx)},{fmt(ry)} 0 0,1 {fmt(rx)},{fmt(ry)} "
+            f"v{fmt(h - 2 * ry)} a{fmt(rx)},{fmt(ry)} 0 0,1 {fmt(-rx)},{fmt(ry)} h{fmt(-(w - 2 * rx))} "
+            f"a{fmt(rx)},{fmt(ry)} 0 0,1 {fmt(-rx)},{fmt(-ry)} v{fmt(-(h - 2 * ry))} a{fmt(rx)},{fmt(ry)} 0 0,1 {fmt(rx)},{fmt(-ry)} Z")
+
+
+def points(p, close):
+    pts = p.replace(",", " ").split()
+    pairs = [(pts[i], pts[i + 1]) for i in range(0, len(pts) - 1, 2)]
+    d = "M" + " L".join(f"{a},{b}" for a, b in pairs)
+    return d + (" Z" if close else "")
+
+
+def to_paths(svg_text):
+    # Downloaded data: refuse DTDs/entities (XXE, entity expansion) before parsing.
+    if "<!DOCTYPE" in svg_text or "<!ENTITY" in svg_text:
+        raise ValueError("unexpected DTD in SVG")
+    root = ET.fromstring(svg_text)
+    out = []
+    for el in root.iter():
+        tag = el.tag.replace(NS, "")
+        a = el.attrib
+        if tag == "path":
+            d = a["d"]
+        elif tag == "circle":
+            d = circle(num(a.get("cx")), num(a.get("cy")), num(a.get("r")))
+        elif tag == "ellipse":
+            d = ellipse(num(a.get("cx")), num(a.get("cy")), num(a.get("rx")), num(a.get("ry")))
+        elif tag == "rect":
+            d = rect(num(a.get("x")), num(a.get("y")), num(a.get("width")), num(a.get("height")),
+                     num(a.get("rx")), num(a.get("ry")))
+        elif tag == "line":
+            d = f"M{a['x1']},{a['y1']} L{a['x2']},{a['y2']}"
+        elif tag in ("polyline", "polygon"):
+            d = points(a["points"], tag == "polygon")
+        else:
+            continue
+        filled = a.get("fill") not in (None, "none")
+        out.append((d, filled))
+    return out
+
+
+def vector(paths):
+    body = []
+    for d, filled in paths:
+        fill = "#FFFFFFFF" if filled else "#00000000"
+        body.append(f'''    <path android:fillColor="{fill}" android:pathData="{d}" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8" android:strokeLineCap="round" android:strokeLineJoin="round" />''')
+    return ('<?xml version="1.0" encoding="utf-8"?>\n'
+            '<!-- Lucide icon (ISC license, https://lucide.dev) -->\n'
+            '<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp"\n'
+            '    android:viewportWidth="24" android:viewportHeight="24">\n'
+            + "\n".join(body) + "\n</vector>\n")
+
+
+def csharp(pkg, out, names):
+    """Path data of selected icons for the desktop app (drawn as stroked Avalonia paths)."""
+    lines = []
+    for name in names:
+        svg = open(os.path.join(pkg, "package", "icons", name + ".svg"), encoding="utf-8").read()
+        # One path for all elements: a later element's leading relative "m" would become relative to where the
+        # previous one ended, so start it from the origin.
+        d = " ".join(("M0 0 " + p) if i > 0 and p.lstrip().startswith("m") else p
+                     for i, (p, _) in enumerate(to_paths(svg)))
+        lines.append(f'        ["{name}"] = "{d}",')
+    open(out, "w", encoding="utf-8").write(
+        "namespace AirPointer;\n\n"
+        "/// <summary>\n"
+        "/// Line icons from Lucide (https://lucide.dev, ISC license), as SVG path data on a 24x24 grid, drawn with a\n"
+        "/// round 1.8 px stroke (see Ui.Icon). Generated by android/tools/lucide_convert.py csharp.\n"
+        "/// </summary>\n"
+        "internal static class LucideIcons\n{\n"
+        "    public static readonly Dictionary<string, string> Paths = new()\n    {\n"
+        + "\n".join(lines) + "\n    };\n}\n")
+    print(f"wrote {len(names)} icons to {out}")
+
+
+def main():
+    if sys.argv[1] == "csharp":
+        csharp(sys.argv[2], sys.argv[3], sys.argv[4:])
+        return
+    pkg, main_dir = sys.argv[1:3]
+    res = os.path.join(main_dir, "res", "drawable")
+    assets = os.path.join(main_dir, "assets")
+    os.makedirs(assets, exist_ok=True)
+    for old in glob.glob(os.path.join(res, "lic_*.xml")):
+        os.remove(old)
+    tags = json.load(open(os.path.join(pkg, "package", "tags.json"), encoding="utf-8"))
+    index = []
+    for svg in sorted(glob.glob(os.path.join(pkg, "package", "icons", "*.svg"))):
+        name = os.path.basename(svg)[:-4]
+        paths = to_paths(open(svg, encoding="utf-8").read())
+        if not paths:
+            continue
+        open(os.path.join(res, "lic_" + name.replace("-", "_") + ".xml"), "w", encoding="utf-8").write(vector(paths))
+        index.append([name, tags.get(name, [])])
+    json.dump(index, open(os.path.join(assets, "lucide-icons.json"), "w", encoding="utf-8"), separators=(",", ":"))
+    print(f"converted {len(index)} icons")
+
+
+main()

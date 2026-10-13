@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Portrait: toolbar, mouse buttons, touchpad, keyboard bar, shortcut bar -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical"
+    android:padding="10dp">
+
+    <include layout="@layout/remote_toolbar" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal">
+
+        <include layout="@layout/remote_mouse_buttons" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <!-- Screen view (computer screen) sits behind the touchpad, which turns translucent over it -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1">
+
+            <!-- Screen layer: H.264 video (TextureView; stays visible so its surface exists) with the cursor/JPEG overlay on top -->
+            <FrameLayout
+                android:id="@+id/screenLayer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#000000"
+                android:visibility="gone">
+
+                <TextureView
+                    android:id="@+id/screenVideo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <com.airpointer.remote.ScreenView
+                    android:id="@+id/screenView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </FrameLayout>
+
+            <com.airpointer.remote.TouchpadView
+                android:id="@+id/touchpad"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </FrameLayout>
+
+        <com.airpointer.remote.ScrollStripView
+            android:id="@+id/scrollStrip"
+            android:layout_width="44dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <include
+        layout="@layout/remote_keyboard_line"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:layout_marginTop="8dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/quickKeys"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+</LinearLayout>

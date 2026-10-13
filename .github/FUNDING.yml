@@ -1,0 +1,5 @@
+# Shows a "Sponsor" button on the repository page. Uncomment the lines for the services you set up.
+# github: [tahaabbas]          # GitHub Sponsors (needs approval at https://github.com/sponsors)
+# ko_fi: your-kofi-name
+# buy_me_a_coffee: your-name
+# custom: ["https://www.paypal.me/your-name"]

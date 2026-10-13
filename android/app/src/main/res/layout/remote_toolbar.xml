@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Two lines, shared by the portrait and landscape layouts:
+     1. connection status · settings · disconnect
+     2. rotate · air mouse · keyboard · screen view · computer sound -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/connStatus"
+            android:drawablePadding="8dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/ok"
+            android:textSize="13sp" />
+
+        <ImageButton
+            android:id="@+id/btnRemoteSettings"
+            style="@style/IconBtn"
+            android:contentDescription="Settings"
+            android:src="@drawable/ic_settings" />
+
+        <ImageButton
+            android:id="@+id/btnDisconnect"
+            style="@style/IconBtn"
+            android:contentDescription="Disconnect"
+            android:src="@drawable/ic_power" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/btnRotate"
+            style="@style/IconBtn"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_marginStart="0dp"
+            android:contentDescription="Rotate screen"
+            android:src="@drawable/ic_rotate" />
+
+        <ImageButton
+            android:id="@+id/btnAir"
+            style="@style/IconBtn"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:contentDescription="Air mouse"
+            android:src="@drawable/ic_air" />
+
+        <ImageButton
+            android:id="@+id/btnKeyboard"
+            style="@style/IconBtn"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:contentDescription="Keyboard"
+            android:src="@drawable/ic_keyboard" />
+
+        <ImageButton
+            android:id="@+id/btnDisplay"
+            style="@style/IconBtn"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:contentDescription="Show computer screen"
+            android:src="@drawable/ic_display" />
+
+        <ImageButton
+            android:id="@+id/btnSound"
+            style="@style/IconBtn"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:contentDescription="Computer sound"
+            android:src="@drawable/ic_volume_off" />
+    </LinearLayout>
+</LinearLayout>
