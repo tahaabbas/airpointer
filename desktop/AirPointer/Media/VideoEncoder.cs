@@ -2,7 +2,7 @@ using AirPointer.Core;
 
 namespace AirPointer.Media;
 
-/// <summary>An H.264 encoder for screen view: BGRA in, Annex-B (SPS/PPS in front of keyframes) out.</summary>
+/// <summary>A video encoder for screen view: BGRA in, Annex-B (parameter sets in front of keyframes) out.</summary>
 public interface IVideoEncoder : IDisposable
 {
     /// <summary>
@@ -21,26 +21,33 @@ public static class VideoEncoders
     public static bool Available(AppConfig config) =>
         (OperatingSystem.IsWindows() && !ForceOpenH264) || (config.UseOpenH264 && OpenH264.IsDownloaded);
 
+    /// <summary>True if this computer might encode H.265 (Windows: the graphics card's encoder, or HEVC Video
+    /// Extensions); <see cref="Create"/> finds out for sure.</summary>
+    public static bool MayDoH265 => OperatingSystem.IsWindows() && !ForceOpenH264;
+
     /// <summary>
-    /// Windows: Media Foundation's encoder (ships with Windows). Linux / macOS: Cisco's OpenH264, if the user
-    /// turned it on. Width/height must be even. Throws if no encoder can be created.
+    /// <paramref name="codec"/>: Protocol.CodecH264 or CodecH265. Windows: Media Foundation (H.265 from the
+    /// graphics card's hardware encoder when there is one). Linux / macOS: Cisco's OpenH264 (H.264 only), if the
+    /// user turned it on. Width/height must be even. Throws if no encoder can be created.
     /// </summary>
-    public static IVideoEncoder Create(AppConfig config, int width, int height, int fps, uint bitrate)
+    public static IVideoEncoder Create(AppConfig config, byte codec, int width, int height, int fps, uint bitrate)
     {
-        if (OperatingSystem.IsWindows() && !ForceOpenH264) return new MediaFoundationEncoder(width, height, fps, bitrate);
-        if (config.UseOpenH264) return new OpenH264Encoder(width, height, fps, bitrate);
-        throw new InvalidOperationException("No H.264 encoder: turn on OpenH264 in the AirPointer window.");
+        if (OperatingSystem.IsWindows() && !ForceOpenH264) return new MediaFoundationEncoder(codec, width, height, fps, bitrate);
+        if (codec == Protocol.CodecH264 && config.UseOpenH264) return new OpenH264Encoder(width, height, fps, bitrate);
+        throw new InvalidOperationException(codec == Protocol.CodecH265
+            ? "No H.265 encoder on this computer."
+            : "No H.264 encoder: turn on Smooth video in the AirPointer window.");
     }
 }
 
-/// <summary>Media Foundation H.264 encoder, in native/airlink (video_win.rs).</summary>
+/// <summary>Media Foundation H.264 / H.265 encoder, in native/airlink (video_win.rs).</summary>
 internal sealed class MediaFoundationEncoder : IVideoEncoder
 {
     private IntPtr _encoder;
 
-    public MediaFoundationEncoder(int width, int height, int fps, uint bitrate)
+    public MediaFoundationEncoder(byte codec, int width, int height, int fps, uint bitrate)
     {
-        _encoder = Airlink.VideoNew((uint)width, (uint)height, (uint)fps, bitrate);
+        _encoder = Airlink.VideoNew((uint)width, (uint)height, (uint)fps, bitrate, codec);
         if (_encoder == IntPtr.Zero) throw new InvalidOperationException(Airlink.LastErrorMessage());
     }
 

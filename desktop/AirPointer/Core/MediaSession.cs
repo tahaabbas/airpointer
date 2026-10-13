@@ -109,7 +109,8 @@ public sealed class MediaSession
         int frameMs = 1000 / Math.Clamp(fps, 1, 60);
         var writer = new MediaWriter(output);
         bool h264 = (codecs & Protocol.CodecH264) != 0 && VideoEncoders.Available(_host.Config);
-        using var encoder = new FrameEncoder(writer, quality, fps, h264, _host.Log, DeviceName, _host.Config);
+        bool h265 = (codecs & Protocol.CodecH265) != 0 && VideoEncoders.MayDoH265;
+        using var encoder = new FrameEncoder(writer, quality, fps, h264, h265, _host.Log, DeviceName, _host.Config);
         StartKeyframeRequestReader(encoder);
         var clock = Stopwatch.StartNew();
         long nextFrame = 0, lastSubmit = 0;
@@ -209,7 +210,7 @@ public sealed class MediaSession
     }
 
     /// <summary>
-    /// Encodes and sends screen images on its own thread, as H.264 (VideoFormat + VideoFrame) or JPEG
+    /// Encodes and sends screen images on its own thread, as H.265 / H.264 video (VideoFormat + VideoFrame) or JPEG
     /// (ScreenFrame). <see cref="Submit"/> copies the pixels into a mailbox that holds only the newest image;
     /// one still waiting there is replaced (dropped). Dropping raw frames is fine for video too: only
     /// encoded frames depend on each other.
@@ -233,16 +234,19 @@ public sealed class MediaSession
 
         // Video encoder state (encoder thread only).
         private IVideoEncoder? _encoder;
+        private bool _h264, _h265; // what's still worth trying, best first
+        private byte _codec;
         private int _encWidth, _encHeight;
         private ScreenRect _encRect;
 
-        public FrameEncoder(MediaWriter writer, int quality, int fps, bool h264, Action<string> log, string device, AppConfig config)
+        public FrameEncoder(MediaWriter writer, int quality, int fps, bool h264, bool h265, Action<string> log, string device, AppConfig config)
         {
             _config = config;
             _writer = writer;
             _quality = quality;
             _fps = fps;
-            _video = h264;
+            (_h264, _h265) = (h264, h265);
+            _video = h264 || h265;
             _log = log;
             _device = device;
             _jpeg = quality switch
@@ -255,7 +259,7 @@ public sealed class MediaSession
             _thread.Start();
         }
 
-        /// <summary>True while sending H.264 (false = JPEG, e.g. after the encoder failed to start).</summary>
+        /// <summary>True while sending video (false = JPEG, e.g. no encoder could start).</summary>
         public bool IsVideo => _video;
 
         public bool KeyframeRequested => _keyframeRequested;
@@ -323,7 +327,7 @@ public sealed class MediaSession
             }
         }
 
-        /// <summary>H.264 path. Returns false if video isn't possible (then this and later frames go as JPEG).</summary>
+        /// <summary>Video path. Returns false if video isn't possible (then this and later frames go as JPEG).</summary>
         private bool EncodeVideo(IntPtr pixels, int width, int height, int stride, ScreenRect rect)
         {
             int w = width & ~1, h = height & ~1;
@@ -331,16 +335,27 @@ public sealed class MediaSession
             if (_encoder == null || w != _encWidth || h != _encHeight)
             {
                 FreeEncoder();
-                try
+                // H.265 when both sides can (about a third less data), else H.264, else JPEG.
+                while (_encoder == null && (_h265 || _h264))
                 {
-                    _encoder = VideoEncoders.Create(_config, w, h, Math.Clamp(_fps, 5, 60), Bitrate(w, h));
+                    _codec = _h265 ? Protocol.CodecH265 : Protocol.CodecH264;
+                    try
+                    {
+                        _encoder = VideoEncoders.Create(_config, _codec, w, h, Math.Clamp(_fps, 5, 60), Bitrate(w, h, _codec));
+                    }
+                    catch (Exception e) when (e is not IOException)
+                    {
+                        if (_codec == Protocol.CodecH265) _h265 = false; else _h264 = false;
+                        _log($"{_device}: {CodecName(_codec)} unavailable for screen view. {e.Message}");
+                    }
                 }
-                catch (Exception e) when (e is not IOException)
+                if (_encoder == null)
                 {
                     _video = false;
-                    _log($"{_device}: H.264 unavailable, using JPEG for screen view. {e.Message}");
+                    _log($"{_device}: using JPEG for screen view.");
                     return false;
                 }
+                _log($"{_device}: screen view as {CodecName(_codec)} video, {w}x{h}.");
                 (_encWidth, _encHeight) = (w, h);
                 _encRect = default; // send the format below
                 key = true;
@@ -355,7 +370,7 @@ public sealed class MediaSession
                 BinaryPrimitives.WriteInt32BigEndian(format.AsSpan(12), rect.Height);
                 BinaryPrimitives.WriteInt32BigEndian(format.AsSpan(16), w);
                 BinaryPrimitives.WriteInt32BigEndian(format.AsSpan(20), h);
-                format[24] = Protocol.CodecH264;
+                format[24] = _codec;
                 _writer.Write(Protocol.VideoFormat, format);
                 _encRect = rect;
                 key = true;
@@ -370,10 +385,16 @@ public sealed class MediaSession
             return true;
         }
 
-        /// <summary>Bits per second for the chosen quality, scaled from 3 / 6 / 12 Mbit/s at 1080p.</summary>
-        private uint Bitrate(int w, int h)
+        private static string CodecName(byte codec) => codec == Protocol.CodecH265 ? "H.265" : "H.264";
+
+        /// <summary>
+        /// Bits per second for the chosen quality, scaled from 3 / 6 / 12 Mbit/s at 1080p for H.264; H.265 gets
+        /// the same picture from about a third less.
+        /// </summary>
+        private uint Bitrate(int w, int h, byte codec)
         {
             double mbps = _quality switch { 0 => 3, 2 => 12, _ => 6 } * (w * (double)h / (1920 * 1080));
+            if (codec == Protocol.CodecH265) mbps *= 0.65;
             return (uint)(Math.Clamp(mbps, 1, 40) * 1_000_000);
         }
 

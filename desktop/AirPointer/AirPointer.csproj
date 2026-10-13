@@ -14,7 +14,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <!-- WMI (brightness control on Windows) needs built-in COM -->
     <BuiltInComInteropSupport Condition="$(TargetFramework.Contains('-windows'))">true</BuiltInComInteropSupport>
-    <Version>2.3.0</Version>
+    <Version>2.4.0</Version>
     <Product>AirPointer</Product>
     <Description>Receiver that lets an Android phone act as a mouse / air mouse.</Description>
   </PropertyGroup>

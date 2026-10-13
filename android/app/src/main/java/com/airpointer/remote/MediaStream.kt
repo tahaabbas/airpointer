@@ -76,7 +76,9 @@ class MediaStream(
                 channel = ch
                 ch.setReadTimeout(10_000) // the computer sends at least a keep-alive every second
                 val nonce = Secure.nonce()
-                val codecs = Protocol.CODEC_JPEG or (if (VideoDecoder.supported) Protocol.CODEC_H264 else 0)
+                val codecs = Protocol.CODEC_JPEG or
+                    (if (VideoDecoder.supported(app, Protocol.CODEC_H264)) Protocol.CODEC_H264 else 0) or
+                    (if (VideoDecoder.supported(app, Protocol.CODEC_H265)) Protocol.CODEC_H265 else 0)
                 val hello = Protocol.frame(
                     Protocol.MEDIA_HELLO,
                     Protocol.helloFields(Link.deviceName(), DeviceKey.id, nonce) +

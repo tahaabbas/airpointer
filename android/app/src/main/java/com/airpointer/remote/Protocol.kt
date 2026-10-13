@@ -53,12 +53,13 @@ object Protocol {
     const val AUDIO_DATA = 0x34
     const val MEDIA_KEEP_ALIVE = 0x35
     const val VIDEO_FORMAT = 0x36 // i32 left, top, width, height (screen rect), i32 video width, height, u8 codec
-    const val VIDEO_FRAME = 0x37 // u8 flags (1 = keyframe), H.264 Annex-B bytes
+    const val VIDEO_FRAME = 0x37 // u8 flags (1 = keyframe), H.264 / H.265 Annex-B bytes
     const val KEYFRAME_REQUEST = 0x38 // phone -> computer on the screen connection
 
     // Last byte of MEDIA_HELLO for the screen: what this phone can decode (bit flags).
     const val CODEC_JPEG = 1
     const val CODEC_H264 = 2
+    const val CODEC_H265 = 4
 
     const val MEDIA_SCREEN = 1
     const val MEDIA_AUDIO = 2

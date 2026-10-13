@@ -25,7 +25,7 @@ internal static partial class Airlink
     [LibraryImport(Lib, EntryPoint = "airlink_last_error")] private static partial nuint LastError(Span<byte> buf, nuint len);
 
     // H.264 encoder for screen view (Windows only; see native/airlink/src/video_win.rs).
-    [LibraryImport(Lib, EntryPoint = "airvideo_new")] public static partial IntPtr VideoNew(uint width, uint height, uint fps, uint bitrate);
+    [LibraryImport(Lib, EntryPoint = "airvideo_new")] public static partial IntPtr VideoNew(uint width, uint height, uint fps, uint bitrate, uint codec);
     [LibraryImport(Lib, EntryPoint = "airvideo_encode")]
     public static partial int VideoEncode(IntPtr encoder, IntPtr bgra, nuint stride, int keyframe, out IntPtr data, out nuint length, out int isKey);
     [LibraryImport(Lib, EntryPoint = "airvideo_free")] public static partial void VideoFree(IntPtr encoder);

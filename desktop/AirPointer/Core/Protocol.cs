@@ -66,6 +66,7 @@ public static class Protocol
     // MediaHello's optional last byte: codecs the phone can decode (bit flags). Absent = JPEG only.
     public const byte CodecJpeg = 1;
     public const byte CodecH264 = 2;
+    public const byte CodecH265 = 4;
 
     public const byte MediaKindScreen = 1;
     public const byte MediaKindAudio = 2;

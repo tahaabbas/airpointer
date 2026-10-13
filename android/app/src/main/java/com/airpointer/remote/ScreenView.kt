@@ -59,13 +59,14 @@ class ScreenView @JvmOverloads constructor(context: Context, attrs: AttributeSet
     private val pendingRect = IntArray(4)
     private val rect = IntArray(4) // screen rect of the picture, in cursor coordinates
 
-    // H.264: decoder on the video surface. [videoSize]/[videoRect] are what the computer last announced.
+    // Video: decoder on the video surface. [videoCodec]/[videoSize]/[videoRect] are what the computer last announced.
     private val videoLock = Any()
     private var surface: Surface? = null
     private var decoder: VideoDecoder? = null
     @Volatile private var videoMode = false
     @Volatile private var videoShown = false // a keyframe went into the current decoder
     private val videoSize = IntArray(2)
+    private var videoCodec = Protocol.CODEC_H264
     private val videoRect = IntArray(4)
     private var lastKeyRequest = 0L
     private val videoMatrix = Matrix()
@@ -131,9 +132,11 @@ class ScreenView @JvmOverloads constructor(context: Context, attrs: AttributeSet
                 val r = IntArray(4) { b.int }
                 val w = b.int
                 val h = b.int
+                val codecId = if (b.hasRemaining()) b.get().toInt() and 0xFF else Protocol.CODEC_H264
                 synchronized(videoLock) {
-                    if (w != videoSize[0] || h != videoSize[1]) {
-                        releaseDecoderLocked() // new size: new decoder, from the next keyframe
+                    if (w != videoSize[0] || h != videoSize[1] || codecId != videoCodec) {
+                        releaseDecoderLocked() // new size or codec: new decoder, from the next keyframe
+                        videoCodec = codecId
                         videoSize[0] = w
                         videoSize[1] = h
                     }
@@ -156,7 +159,7 @@ class ScreenView @JvmOverloads constructor(context: Context, attrs: AttributeSet
                 releaseDecoderLocked()
                 val s = surface
                 if (s == null || videoSize[0] == 0) return // not visible yet: a keyframe is asked for when it is
-                d = runCatching { VideoDecoder(s, videoSize[0], videoSize[1]) { onDecoderError() } }.getOrNull() ?: return
+                d = runCatching { VideoDecoder(s, videoCodec, videoSize[0], videoSize[1]) { onDecoderError() } }.getOrNull() ?: return
                 decoder = d
             }
             if (!videoShown && !key) {

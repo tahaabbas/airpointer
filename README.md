@@ -35,7 +35,7 @@ At home over Wi-Fi, or from anywhere over the internet. No accounts, no router s
 |---|---|
 | **Touchpad** | Tap to click, two fingers to scroll or right-click, pinch to zoom, three-finger swipes to switch apps. Long-press to drag. |
 | **Air mouse** | Point the phone at the screen like a TV remote; the gyroscope moves the cursor. Volume keys click. |
-| **Screen view** | See the computer's screen behind the touchpad. It follows the cursor and pinches to zoom. Smooth H.264 video, decoded by the phone's hardware. |
+| **Screen view** | See the computer's screen behind the touchpad. It follows the cursor and pinches to zoom. Smooth H.265 or H.264 video, encoded and decoded by the graphics hardware. |
 | **Computer sound** | Hear the computer's audio on the phone (Windows and Linux). |
 | **Keyboard and shortcuts** | Type with the phone's keyboard. A customizable shortcut bar: 2000+ icons, any key combination or text, presets for media, volume, brightness, slideshows and more. A separate bar for each computer. |
 | **Wi-Fi and internet** | Finds your computer on the home network, and connects peer-to-peer over the internet when you're away. No port forwarding, no account. |
@@ -132,6 +132,13 @@ Open AirPointer on the phone and tap your computer under *Your computers*. At ho
 
 **Screen view:** shows the computer's screen behind the touchpad. The touchpad still works as usual; the picture slides along when the cursor nears an edge, and pinching zooms it. In Settings → *Screen* you can choose quality, frame rate, zoom and how see-through the touchpad is. On the computer, *Share screen* and *Share sound* can each be switched off.
 
+The picture is sent as video, picked automatically:
+- **H.265:** when both the computer and the phone have a hardware H.265 encoder or decoder (most PCs and phones from the last several years). It needs about a third less data than H.264.
+- **H.264:** otherwise.
+- **Images:** only if neither works.
+
+On Windows this needs no setting. On Linux and macOS, turn on *Smooth video* in the computer app for H.264.
+
 **Shortcut bar:** the row of buttons at the bottom. Tap **+** at its end, or open Settings → *Shortcut buttons*.
 - Add buttons with an icon, a label, or both. A button presses keys or types text:
   - `Ctrl+C`: keys pressed together.
@@ -171,7 +178,7 @@ Open AirPointer on the phone and tap your computer under *Your computers*. At ho
 
 | Platform | Status |
 |---|---|
-| **Windows 10 / 11** | Fully tested. Everything works: touchpad, air mouse, keyboard, shortcuts, screen view (H.264), computer sound, internet connections. |
+| **Windows 10 / 11** | Fully tested. Everything works: touchpad, air mouse, keyboard, shortcuts, screen view (H.265 / H.264), computer sound, internet connections. |
 | **Android phones** | Tested. Runs on Android 7.0 and newer (arm64 and armv7 phones). |
 | **macOS** | **Not tested.** We have never run AirPointer on a Mac as the computer. It's built from the same code and libraries as the Windows app, so we expect it to work, but we can't promise it. Internet connections and computer sound aren't available on macOS yet. |
 | **Linux** | **Not tested**, for the same reason. Needs X11. Internet connections aren't available on Linux yet. |
@@ -222,7 +229,7 @@ Raise *Air mouse smoothing* in Settings. When the phone is held still the cursor
 <details>
 <summary><b>Screen view is choppy</b></summary>
 
-Choose *Performance* or a lower frame rate in Settings → Screen. On Linux and macOS, turn on **Smooth video** in the computer app: it sends H.264 video instead of images and needs far less data.
+Choose *Performance* or a lower frame rate in Settings → Screen. On Linux and macOS, turn on **Smooth video** in the computer app: it sends H.264 video instead of images and needs far less data. On Windows, video is always on (H.265 when the graphics card and phone support it, else H.264).
 </details>
 
 <details>
@@ -291,7 +298,7 @@ screenshots/             the pictures in this README
 - **Framing:** `[u16 length][u8 type][payload]` over TLS on TCP port 50505.
 - **Handshake:** each connection starts `Hello` → `AuthChallenge` → `AuthResponse` → `Welcome`. Pairing is one `PairRequest` → `PairResult` exchange.
 - **Discovery:** UDP port 50506.
-- **Screen and sound:** each uses its own connection with large frames `[u32 length][u8 type][payload]`: H.264 (`VideoFormat`, `VideoFrame`) or JPEG, cursor positions, and 16-bit PCM audio.
+- **Screen and sound:** each uses its own connection with large frames `[u32 length][u8 type][payload]`: H.265 or H.264 (`VideoFormat`, `VideoFrame`; the phone lists what it can decode in `MediaHello`) or JPEG, cursor positions, and 16-bit PCM audio.
 - **Over the internet:** the same frames run inside an iroh QUIC stream (ALPN `airpointer/1`).
 
 See `Protocol.cs` / `Protocol.kt` for the full list.
@@ -315,8 +322,12 @@ AirPointer is built on other open-source work, each used under its own license:
 | [OpenH264](https://www.openh264.org) by Cisco | Optional *Smooth video* on Linux and macOS | Cisco's binary license, **not included** (see below) |
 
 **About video encoding:**
-- AirPointer does **not** use FFmpeg.
-- **Windows:** the built-in Media Foundation encoder produces H.264 video.
+- AirPointer does **not** use FFmpeg, and doesn't include any H.264 or H.265 codec of its own.
+- **Windows:** video comes from the encoders already on the computer, through Windows Media Foundation:
+  - **H.265:** the graphics card's hardware encoder (NVIDIA, Intel, AMD), or Microsoft's *HEVC Video Extensions* if installed.
+  - **H.264:** Windows' built-in encoder.
+  - These encoders' licenses come with Windows and the graphics drivers.
+- **Phone:** decodes with its own built-in hardware decoder, licensed with the phone.
 - **Linux and macOS:** H.264 comes from the *OpenH264 Video Codec provided by Cisco Systems, Inc.* It isn't bundled with AirPointer.
   - It's only downloaded, directly from Cisco, if you turn on *Smooth video*.
   - The download is checked against the exact release AirPointer was tested with.
