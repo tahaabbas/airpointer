@@ -253,6 +253,7 @@ dotnet publish -c Release -f net10.0-windows10.0.19041.0 -r win-x64 --self-conta
   - `AIRPOINTER_HOME=<folder>` keeps the config, keys and log in that folder.
   - `AIRPOINTER_TEST_SCREEN=<image>` makes screen view show that image instead of the real screen.
   - `AIRPOINTER_NAME=<name>` changes the computer's name shown on phones.
+  - `AIRPOINTER_INTERNET_ONLY=1` accepts phones only over the internet, to test internet connections at home.
 </details>
 
 <details>

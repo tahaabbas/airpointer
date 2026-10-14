@@ -222,6 +222,14 @@ pub mod core {
         });
     }
 
+    /// Tells the endpoint the device's network may have changed (Wi-Fi <-> mobile data, new address), so it
+    /// rebinds and moves its connections and relay link over right away. Android can't detect this from
+    /// native code, so the app reports it (iroh's own advice); elsewhere it's harmless.
+    pub fn network_change(node: u64) {
+        let Some(n) = get(&NODES, node) else { return };
+        RT.block_on(n.ep.network_change());
+    }
+
     pub fn stop(node: u64) {
         let Some(n) = take(&NODES, node) else { return };
         RT.block_on(async { timeout(Duration::from_secs(3), n.ep.close()).await.ok() });

@@ -20,8 +20,8 @@ android {
         applicationId = "com.airpointer.remote"
         minSdk = 24
         targetSdk = 34
-        versionCode = 15
-        versionName = "2.4"
+        versionCode = 16
+        versionName = "2.4.1"
 
         // Internet connections (native/airlink) are built for phones' ABIs. x86_64 is only for the emulator:
         // add it with ./gradlew assembleRelease -PwithEmulatorAbi

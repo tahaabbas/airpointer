@@ -396,6 +396,7 @@ class MainActivity : Activity() {
         e is NetSink.HandshakeException -> e.message ?: prefix
         e is javax.net.ssl.SSLException || e.cause is java.security.cert.CertificateException ->
             "$prefix This computer isn't paired. Scan its code."
+        e.message?.contains("over the internet") == true -> "$prefix No answer over Wi-Fi or the internet."
         else -> "$prefix Is AirPointer running on $who?"
     }
 

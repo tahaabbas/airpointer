@@ -1,12 +1,17 @@
 package com.airpointer.remote
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
+import android.os.SystemClock
 import android.util.Base64
 import java.io.Closeable
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.SecureRandom
+import java.util.concurrent.Executors
 import kotlin.concurrent.thread
 
 /**
@@ -26,19 +31,55 @@ object Airlink {
     @JvmStatic external fun direct(pipe: Long): Int
     @JvmStatic external fun close(pipe: Long)
     @JvmStatic external fun stop(node: Long)
+    @JvmStatic external fun networkChanged(node: Long)
 }
 
-/** The phone's internet endpoint: started on first use, stopped when the user disconnects. */
+/**
+ * The phone's internet endpoint: started on first use, stopped when the user disconnects.
+ *
+ * Two things keep it working when the phone's network changes (Wi-Fi <-> mobile data, a new address):
+ * Android's network changes are passed on to iroh, which can't see them from native code on Android, so
+ * connections move over right away; and a connect that fails anyway gets a fresh endpoint, in case the old
+ * one is stuck on a network that's gone.
+ */
 object Internet {
     private var node = 0L
+    private var watcher: ConnectivityManager.NetworkCallback? = null
+    private val notifier = Executors.newSingleThreadExecutor { Thread(it, "airlink-network") }
 
     @Synchronized
     private fun node(context: Context): Long {
         if (node == 0L) {
             if (!Airlink.available) throw IOException("Internet connections aren't available in this build")
             node = Airlink.start(context.applicationContext, secret(context))
+            watchNetwork(context.applicationContext)
         }
         return node
+    }
+
+    /** Tells the endpoint whenever the phone's default network changes or gets a new address. */
+    private fun watchNetwork(app: Context) {
+        if (watcher != null) return
+        val cm = app.getSystemService(ConnectivityManager::class.java) ?: return
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) = changed()
+            override fun onLost(network: Network) = changed()
+            override fun onLinkPropertiesChanged(network: Network, lp: LinkProperties) = changed()
+        }
+        if (runCatching { cm.registerDefaultNetworkCallback(callback) }.isSuccess) watcher = callback
+    }
+
+    private fun changed() {
+        val n = synchronized(this) { node }
+        if (n != 0L) notifier.execute { Airlink.networkChanged(n) }
+    }
+
+    /** Drops [old] (if it's still the current endpoint), so the next connect starts a fresh one. */
+    @Synchronized
+    private fun discard(old: Long) {
+        if (node != old) return
+        node = 0L
+        thread(name = "airlink-stop") { Airlink.stop(old) }
     }
 
     /** The endpoint's key (only for the encrypted QUIC link; who-is-who is proven by DeviceKey on top). */
@@ -50,10 +91,23 @@ object Internet {
         return key
     }
 
-    /** Blocking: connects to [pc] over the internet (by its id; no address needed). */
+    /**
+     * Blocking: connects to [pc] over the internet (by its id; no address needed). If the first try fails,
+     * tries once more with a fresh endpoint within the same time.
+     */
     fun open(context: Context, pc: PairedPc, timeoutMs: Int = 20000): AirlinkPipe {
         val id = pc.internetId ?: throw IOException("${pc.name} hasn't enabled internet access yet")
-        return AirlinkPipe(Airlink.connect(node(context.applicationContext), id, timeoutMs))
+        val app = context.applicationContext
+        val start = SystemClock.elapsedRealtime()
+        val first = node(app)
+        try {
+            return AirlinkPipe(Airlink.connect(first, id, timeoutMs * 3 / 5))
+        } catch (e: IOException) {
+            discard(first)
+            val left = timeoutMs - (SystemClock.elapsedRealtime() - start).toInt()
+            if (left < 3000) throw e
+            return AirlinkPipe(Airlink.connect(node(app), id, left))
+        }
     }
 
     fun stop() {

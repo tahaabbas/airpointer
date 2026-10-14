@@ -43,6 +43,16 @@ public sealed class ServerHost : IDisposable
 
     public void Start()
     {
+        // Testing aid: AIRPOINTER_INTERNET_ONLY=1 accepts phones only over the internet (no Wi-Fi server,
+        // no discovery), to try internet connections with phone and computer on the same network.
+        if (Environment.GetEnvironmentVariable("AIRPOINTER_INTERNET_ONLY") == "1")
+        {
+            WifiStatus = "Off (AIRPOINTER_INTERNET_ONLY)";
+            Log(WifiStatus);
+            StartInternet();
+            return;
+        }
+
         try
         {
             _tcp = new TcpServer(this, Config.ListenPort);

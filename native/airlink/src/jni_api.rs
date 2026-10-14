@@ -127,3 +127,8 @@ pub extern "system" fn Java_com_airpointer_remote_Airlink_close(_: JNIEnv, _: JC
 pub extern "system" fn Java_com_airpointer_remote_Airlink_stop(_: JNIEnv, _: JClass, node: jlong) {
     core::stop(node as u64)
 }
+
+#[no_mangle]
+pub extern "system" fn Java_com_airpointer_remote_Airlink_networkChanged(_: JNIEnv, _: JClass, node: jlong) {
+    core::network_change(node as u64)
+}
